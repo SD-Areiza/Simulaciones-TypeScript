@@ -1,0 +1,24 @@
+{
+  "name": "simulaciones-ts",
+  "version": "1.0.0",
+  "description": "Proyecto de simulaciones en TypeScript para cajero, carrito, digiturno, hoteles y venta de boletos.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "start:cajero": "ts-node cajero.ts",
+    "start:carrito": "ts-node carrito.ts",
+    "start:digiturno": "ts-node Digiturno.ts",
+    "start:hoteles": "ts-node hoteles.ts",
+    "start:venta-boletos": "ts-node VentaBoletos.ts"
+  },
+  "dependencies": {
+    "prompt-sync": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/prompt-sync": "^4.2.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
