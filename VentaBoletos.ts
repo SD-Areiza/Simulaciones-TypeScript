@@ -1,68 +1,95 @@
 import promptSync from 'prompt-sync';
 
-const prompt = promptSync();
+type TipoBoleta = 'adulto' | 'estudiante' | 'nino';
 
-type StadiumZone = {
-  name: string;
-  price: number;
-  capacity: number;
-};
+interface Funcion {
+    titulo: string;
+    horarios: string[];
+    asientosDisponibles: Record<string, number>;
+    precios: Record<TipoBoleta, number>;
+}
 
-const stadiumZones: StadiumZone[] = [
-  { name: 'General', price: 50, capacity: 100 },
-  { name: 'Preferencial', price: 80, capacity: 50 },
-  { name: 'VIP', price: 150, capacity: 10 }
-];
+const prompt = promptSync({ sigint: true });
 
-const runTicketSales = (): void => {
-  let isSelling = true;
+class CineInteractivo {
+    private peliculas: Record<string, Funcion> = {
+        '1': {
+            titulo: 'Matrix',
+            horarios: ['18:00', '20:30'],
+            asientosDisponibles: { '18:00': 50, '20:30': 50 },
+            precios: { adulto: 10, estudiante: 7, nino: 5 },
+        },
+        '2': {
+            titulo: 'Dune',
+            horarios: ['17:00', '21:00'],
+            asientosDisponibles: { '17:00': 50, '21:00': 50 },
+            precios: { adulto: 10, estudiante: 7, nino: 5 },
+        },
+    };
 
-  while (isSelling) {
-    console.log('\n🎟️ TAQUILLA DEL ESTADIO');
-    stadiumZones.forEach((zone, index) => {
-      console.log(`${index + 1}. ${zone.name} - $${zone.price} (Cupos: ${zone.capacity})`);
-    });
-
-    const selectionStr = prompt('Seleccione la zona (1-3) o 4 para Salir -> ');
-    const selection = Number(selectionStr) - 1;
-
-    if (selectionStr === '4' || selectionStr === null) {
-      isSelling = false;
-      continue;
-    }
-
-    const isValidSelection = !isNaN(selection) && selection >= 0 && selection < stadiumZones.length;
-
-    if (isValidSelection) {
-      const selectedZone = stadiumZones[selection];
-
-      if (selectedZone.capacity > 0) {
-        const qtyStr = prompt(`¿Cuántos boletos desea para ${selectedZone.name}? -> `);
-        const quantity = Number(qtyStr);
-
-        if (!isNaN(quantity) && quantity > 0) {
-          if (quantity <= selectedZone.capacity) {
-            selectedZone.capacity -= quantity;
-            const totalCost = quantity * selectedZone.price;
-
-            console.log('\n✅ --- RECIBO DE COMPRA --- ✅');
-            console.log(`Zona: ${selectedZone.name}`);
-            console.log(`Cantidad: ${quantity}`);
-            console.log(`Total Pagado: $${totalCost}`);
-            console.log('¡Disfrute el evento!\n----------------------------');
-          } else {
-            console.log(`❌ Solo quedan ${selectedZone.capacity} boletos en esta zona.`);
-          }
-        } else {
-          console.log('⚠️ Cantidad no válida.');
+    venderEntradasPorPrompt(): void {
+        console.log('=== Venta de Boletas ===');
+        console.log('Películas disponibles:');
+        for (const id in this.peliculas) {
+            console.log(`${id}. ${this.peliculas[id].titulo}`);
         }
-      } else {
-        console.log(`❌ La zona ${selectedZone.name} está AGOTADA.`);
-      }
-    } else {
-      console.log('⚠️ Zona seleccionada inválida.');
-    }
-  }
-};
 
-runTicketSales();
+        const peliId = prompt('Ingresa el ID de la película: ');
+        const pelicula = peliId ? this.peliculas[peliId] : undefined;
+        if (!pelicula) {
+            console.log('Película inválida.');
+            return;
+        }
+
+        console.log(`Horarios disponibles para ${pelicula.titulo}: ${pelicula.horarios.join(', ')}`);
+        const horario = prompt('Ingresa el horario: ');
+        if (!horario || !pelicula.horarios.includes(horario)) {
+            console.log('Horario inválido.');
+            return;
+        }
+
+        const tipoBoletaInput = prompt('Tipo de boleta (adulto, estudiante, nino): ');
+        const tipoBoleta = tipoBoletaInput?.toLowerCase() as TipoBoleta;
+        if (tipoBoleta !== 'adulto' && tipoBoleta !== 'estudiante' && tipoBoleta !== 'nino') {
+            console.log('Tipo de boleta inválido.');
+            return;
+        }
+
+        const cantidad = Number(prompt('Cantidad de boletas: '));
+        if (!Number.isInteger(cantidad) || cantidad <= 0) {
+            console.log('Cantidad inválida. Debe ser un número entero mayor que cero.');
+            return;
+        }
+
+        try {
+            const total = this.venderBoletas(peliId, horario, tipoBoleta, cantidad);
+            console.log(`¡Venta exitosa! Se registraron ${cantidad} entradas para el horario ${horario}. Total: $${total.toFixed(2)}`);
+        } catch (error: any) {
+            console.log(`Error en la venta: ${error.message}`);
+        }
+    }
+
+    private venderBoletas(peliId: string, horario: string, tipoBoleta: TipoBoleta, cantidad: number): number {
+        const pelicula = this.peliculas[peliId];
+        if (!pelicula) {
+            throw new Error('Película no encontrada.');
+        }
+        if (!pelicula.horarios.includes(horario)) {
+            throw new Error('Horario no disponible.');
+        }
+
+        const disponibles = pelicula.asientosDisponibles[horario];
+        if (disponibles === undefined) {
+            throw new Error('Horario inválido.');
+        }
+        if (cantidad > disponibles) {
+            throw new Error(`Solo hay ${disponibles} asientos disponibles para este horario.`);
+        }
+
+        pelicula.asientosDisponibles[horario] -= cantidad;
+        return pelicula.precios[tipoBoleta] * cantidad;
+    }
+}
+
+const cine = new CineInteractivo();
+cine.venderEntradasPorPrompt();

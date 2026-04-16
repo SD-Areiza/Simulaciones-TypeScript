@@ -1,82 +1,96 @@
 import promptSync from 'prompt-sync';
 
-const prompt = promptSync();
+type Categoria = 'ECONOMICA' | 'ESTANDAR' | 'SUITE';
 
-type Hotel = {
-  name: string;
-  capacity: number;
-  reservations: number[];
-};
+interface Reserva {
+    id: string;
+    categoria: Categoria;
+    noches: number;
+    tarifaBase: number;
+    descuento: number;
+    total: number;
+}
 
-const hotels: Hotel[] = [
-  { name: 'Hotel Paraíso', capacity: 5, reservations: [] },
-  { name: 'Vista al Mar', capacity: 2, reservations: [] }
-];
+const prompt = promptSync({ sigint: true });
 
-const runHotelSystem = (): void => {
-  let isRunning = true;
+class SistemaHotelInteractivo {
+    private tarifas: Record<Categoria, number> = {
+        ECONOMICA: 80,
+        ESTANDAR: 150,
+        SUITE: 300,
+    };
+    private reservas: Reserva[] = [];
 
-  while (isRunning) {
-    console.log('\n🏨 SISTEMA DE HOTELES');
-    const menu = prompt('1. Ver disponibles | 2. Reservar | 3. Cancelar | 4. Salir -> ');
+    iniciarReserva(): void {
+        console.log('=== Reservas de Hotel ===');
+        const categoriaStr = prompt('Elige la categoría (ECONOMICA: $80, ESTANDAR: $150, SUITE: $300): ')?.toUpperCase();
+        const nochesStr = prompt('¿Cuántas noches te vas a hospedar?: ');
 
-    if (menu === '4' || menu === null) {
-      isRunning = false;
-      continue;
+        if (!categoriaStr || !nochesStr) {
+            console.log('Operación cancelada.');
+            return;
+        }
+
+        const noches = Number(nochesStr);
+        if (!Number.isInteger(noches) || noches <= 0) {
+            console.log('Número de noches inválido. Debe ser un entero mayor que cero.');
+            return;
+        }
+
+        if (!this.esCategoriaValida(categoriaStr)) {
+            console.log('Categoría inválida. Debe ser ECONOMICA, ESTANDAR o SUITE.');
+            return;
+        }
+
+        const categoria = categoriaStr as Categoria;
+        const reserva = this.crearReserva(categoria, noches);
+        console.log(`Reserva creada para ${reserva.noches} noches en categoría ${reserva.categoria}.`);
+        this.reporteReserva(reserva);
     }
 
-    if (menu === '1') {
-      console.log('\n--- Hoteles Disponibles ---');
-      hotels.forEach((hotel, index) => {
-        const availableBeds = hotel.capacity - hotel.reservations.length;
-        console.log(`${index + 1}. ${hotel.name} (Cupos: ${availableBeds})`);
-      });
-    } else if (menu === '2') {
-      const hotelIndexStr = prompt('Ingrese el número del hotel a reservar: ');
-      const hotelIndex = Number(hotelIndexStr) - 1;
-      const isValidIndex = !isNaN(hotelIndex) && hotelIndex >= 0 && hotelIndex < hotels.length;
-
-      if (isValidIndex) {
-        const selectedHotel = hotels[hotelIndex];
-        const hasCapacity = selectedHotel.reservations.length < selectedHotel.capacity;
-        const message = hasCapacity
-          ? '✅ Reserva confirmada. Su ID es: '
-          : '❌ Lo sentimos, el hotel está lleno.';
-
-        if (hasCapacity) {
-          const reservationId = Math.floor(Math.random() * 10000);
-          selectedHotel.reservations.push(reservationId);
-          console.log(message + reservationId);
-        } else {
-          console.log(message);
-        }
-      } else {
-        console.log('⚠️ Selección inválida.');
-      }
-    } else if (menu === '3') {
-      const idStr = prompt('Ingrese el ID de su reserva: ');
-      const resId = Number(idStr);
-      let found = false;
-
-      for (let i = 0; i < hotels.length; i++) {
-        for (let j = 0; j < hotels[i].reservations.length; j++) {
-          if (hotels[i].reservations[j] === resId) {
-            hotels[i].reservations.splice(j, 1);
-            found = true;
-            console.log('✅ Reserva cancelada con éxito.');
-            break;
-          }
-        }
-        if (found) {
-          break;
-        }
-      }
-
-      if (!found) {
-        console.log('❌ ID de reserva no encontrado.');
-      }
+    private esCategoriaValida(categoria: string): categoria is Categoria {
+        return categoria === 'ECONOMICA' || categoria === 'ESTANDAR' || categoria === 'SUITE';
     }
-  }
-};
 
-runHotelSystem();
+    private crearReserva(categoria: Categoria, noches: number): Reserva {
+        const tarifaBase = this.tarifas[categoria];
+        const descuento = this.calcularDescuento(noches);
+        const total = tarifaBase * noches * (1 - descuento);
+        const reserva: Reserva = {
+            id: `R-${Date.now()}`,
+            categoria,
+            noches,
+            tarifaBase,
+            descuento,
+            total,
+        };
+        this.reservas.push(reserva);
+        return reserva;
+    }
+
+    private calcularDescuento(noches: number): number {
+        if (noches >= 10) {
+            return 0.15;
+        }
+        if (noches >= 5) {
+            return 0.1;
+        }
+        if (noches >= 3) {
+            return 0.05;
+        }
+        return 0;
+    }
+
+    private reporteReserva(reserva: Reserva): void {
+        console.log('--- Detalle de la Reserva ---');
+        console.log(`ID: ${reserva.id}`);
+        console.log(`Categoría: ${reserva.categoria}`);
+        console.log(`Noches: ${reserva.noches}`);
+        console.log(`Tarifa por noche: $${reserva.tarifaBase.toFixed(2)}`);
+        console.log(`Descuento aplicado: ${(reserva.descuento * 100).toFixed(0)}%`);
+        console.log(`Total a pagar: $${reserva.total.toFixed(2)}`);
+    }
+}
+
+const sistema = new SistemaHotelInteractivo();
+sistema.iniciarReserva();

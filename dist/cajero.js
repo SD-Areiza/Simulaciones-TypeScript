@@ -4,80 +4,85 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const prompt_sync_1 = __importDefault(require("prompt-sync"));
-const prompt = (0, prompt_sync_1.default)();
-const myAccount = { owner: 'Carlos Dev', balance: 1500 };
-const destinationAccounts = [
-    { accountNum: '123456', owner: 'Ana' },
-    { accountNum: '654321', owner: 'Juan' }
-];
-const runATM = () => {
-    let isRunning = true;
-    while (isRunning) {
-        console.log(`\n🏧 BIENVENIDO ${myAccount.owner}`);
-        const action = prompt('1. Consultar | 2. Ingresar | 3. Retirar | 4. Transferir | 5. Salir -> ');
-        if (action === '5' || action === null) {
-            isRunning = false;
-            continue;
-        }
-        if (action === '1') {
-            console.log(`\n💰 Su saldo actual es: $${myAccount.balance}`);
-        }
-        else if (action === '2') {
-            const depositInput = prompt('Ingrese el monto a consignar: $');
-            const depositAmount = Number(depositInput);
-            const isValidDeposit = !isNaN(depositAmount) && depositAmount > 0;
-            if (isValidDeposit) {
-                myAccount.balance += depositAmount;
-                console.log(`✅ Depósito exitoso. Nuevo saldo: $${myAccount.balance}`);
-            }
-            else {
-                console.log('⚠️ Monto numérico inválido.');
-            }
-        }
-        else if (action === '3') {
-            const amountInput = prompt('Ingrese el monto a retirar: $');
-            const amount = Number(amountInput);
-            if (!isNaN(amount) && amount > 0) {
-                if (amount <= myAccount.balance) {
-                    myAccount.balance -= amount;
-                    console.log(`✅ Retiro exitoso. Nuevo saldo: $${myAccount.balance}`);
-                }
-                else {
-                    console.log('❌ Fondos insuficientes.');
-                }
-            }
-            else {
-                console.log('⚠️ Monto numérico inválido.');
-            }
-        }
-        else if (action === '4') {
-            const targetAccount = prompt('Ingrese el número de cuenta destino: ');
-            let accountFound = false;
-            for (let i = 0; i < destinationAccounts.length; i++) {
-                if (destinationAccounts[i].accountNum === targetAccount) {
-                    accountFound = true;
+const prompt = (0, prompt_sync_1.default)({ sigint: true });
+class CajeroAutomatico {
+    constructor(titular, saldoInicial = 0) {
+        this.nextId = 1;
+        this.cuenta = { titular, saldoActual: saldoInicial, transacciones: [] };
+    }
+    iniciarInteraccion() {
+        let activo = true;
+        while (activo) {
+            console.log(`\n=== Cajero Automático - ${this.cuenta.titular} ===`);
+            console.log('1. Consultar Saldo');
+            console.log('2. Depositar Dinero');
+            console.log('3. Retirar Dinero');
+            console.log('4. Ver Estado de Cuenta');
+            console.log('5. Salir');
+            const opcion = prompt('Elige una opción: ');
+            switch (opcion) {
+                case '1':
+                    console.log(`Saldo actual: $${this.cuenta.saldoActual.toFixed(2)}`);
+                    break;
+                case '2': {
+                    const montoDep = Number(prompt('Ingresa el monto a depositar: '));
+                    if (!Number.isFinite(montoDep) || montoDep <= 0) {
+                        console.log('Monto inválido. Debe ser un número mayor que cero.');
+                        break;
+                    }
+                    this.cuenta.saldoActual += montoDep;
+                    this.registrarTransaccion('deposito', montoDep);
+                    console.log('Depósito exitoso.');
                     break;
                 }
-            }
-            if (accountFound) {
-                const transferInput = prompt('Ingrese el monto a transferir: $');
-                const transferAmount = Number(transferInput);
-                const isValidTransfer = !isNaN(transferAmount) && transferAmount > 0 && transferAmount <= myAccount.balance;
-                if (isValidTransfer) {
-                    myAccount.balance -= transferAmount;
-                    console.log(`✅ Transferencia de $${transferAmount} exitosa.`);
+                case '3': {
+                    const montoRet = Number(prompt('Ingresa el monto a retirar: '));
+                    if (!Number.isFinite(montoRet) || montoRet <= 0) {
+                        console.log('Monto inválido. Debe ser un número mayor que cero.');
+                        break;
+                    }
+                    if (montoRet > this.cuenta.saldoActual) {
+                        console.log('Fondos insuficientes.');
+                        break;
+                    }
+                    this.cuenta.saldoActual -= montoRet;
+                    this.registrarTransaccion('retiro', montoRet);
+                    console.log('Retiro exitoso.');
+                    break;
                 }
-                else {
-                    console.log('❌ Monto inválido o fondos insuficientes.');
-                }
+                case '4':
+                    this.estadoDeCuenta();
+                    break;
+                case '5':
+                    activo = false;
+                    console.log('Gracias por usar nuestro banco.');
+                    break;
+                default:
+                    console.log('Opción no válida. Por favor, elige un número del 1 al 5.');
             }
-            else {
-                console.log('❌ Cuenta destino no encontrada.');
-            }
-        }
-        else {
-            console.log('⚠️ Opción no válida. Por favor seleccione un número del 1 al 5.');
         }
     }
-};
-runATM();
+    estadoDeCuenta() {
+        console.log('\n--- Estado de Cuenta ---');
+        console.log(`Titular: ${this.cuenta.titular}`);
+        console.log(`Saldo actual: $${this.cuenta.saldoActual.toFixed(2)}`);
+        if (this.cuenta.transacciones.length === 0) {
+            console.log('No hay transacciones registradas.');
+            return;
+        }
+        this.cuenta.transacciones.forEach((transaccion) => {
+            console.log(`${transaccion.id}. ${transaccion.tipo.toUpperCase()} - $${transaccion.monto.toFixed(2)} - ${transaccion.fecha.toLocaleString()} - Saldo: $${transaccion.saldoResultante.toFixed(2)}`);
+        });
+    }
+    registrarTransaccion(tipo, monto) {
+        this.cuenta.transacciones.push({
+            id: this.nextId++,
+            tipo,
+            monto,
+            fecha: new Date(),
+            saldoResultante: this.cuenta.saldoActual,
+        });
+    }
+}
+const miCajero = new CajeroAutomatico('Estudiante', 100);
+miCajero.iniciarInteraccion();
